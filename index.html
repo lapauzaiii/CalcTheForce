@@ -155,92 +155,10 @@
       "Google Analytics",
       "Adobe Experience Platform",
       "Web/Mobile SDK",
-      "Streaming Platform (Kafka, etc.)"
+      "Streaming Platform (Kafka, etc.)",
+      "Custom / Ingestion API"
     ];
 
-    function toggleMode(mode) {
-      document.querySelectorAll('.section').forEach(el => el.classList.remove('visible'));
-      document.getElementById(mode).classList.add('visible');
-    }
-
-    function calculateSimple() {
-      const vol = parseInt(document.getElementById("simpleVolume").value);
-      const freq = parseFloat(document.getElementById("simpleRefresh").value);
-      const seg = parseInt(document.getElementById("simpleSegments").value);
-      const act = parseInt(document.getElementById("simpleActivation").value);
-      const ret = parseInt(document.getElementById("simpleRetention").value);
-      const rate = parseFloat(document.getElementById("simpleCreditRate").value);
-
-      const credits = Math.round((vol * freq) + seg + act + (ret / 3));
-      const cost = (credits * rate).toFixed(2);
-      const annual = (credits * rate * 12).toFixed(2);
-
-      document.getElementById("simpleCredits").textContent = credits;
-      document.getElementById("simpleCost").textContent = cost;
-      document.getElementById("simpleAnnual").textContent = annual;
-      document.getElementById("simpleResults").style.display = "block";
-    }
-
-    function generateSources(count) {
-      const container = document.getElementById("sourceContainer");
-      const label = document.getElementById("sourceCountLabel");
-      label.textContent = count;
-      container.innerHTML = "";
-
-      for (let i = 0; i < count; i++) {
-        const block = document.createElement("div");
-        block.className = "source-block";
-        block.innerHTML = `
-          <label>Source ${i + 1} Name:</label>
-          <input type="text" id="sourceName-${i}" placeholder="e.g., Salesforce CRM" />
-
-          <label>Connector:</label>
-          <select id="connector-${i}">
-            ${connectors.map(c => `<option value="${c}">${c}</option>`).join("")}
-          </select>
-
-          <label>Ingestion Method:</label>
-          <select id="method-${i}">
-            ${Object.keys(creditMultipliers).map(m => `<option value="${m}">${m}</option>`).join("")}
-          </select>
-
-          <label>Monthly Volume (millions of rows):</label>
-          <input type="number" id="volume-${i}" value="1" min="0" step="0.1" />
-        `;
-        container.appendChild(block);
-      }
-    }
-
-    function calculateAdvanced() {
-      const count = parseInt(document.getElementById("sourceCount").value);
-      const rate = parseFloat(document.getElementById("advancedCreditRate").value);
-      let totalCredits = 0;
-      let breakdownHTML = "";
-
-      for (let i = 0; i < count; i++) {
-        const name = document.getElementById(`sourceName-${i}`).value || `Source ${i + 1}`;
-        const method = document.getElementById(`method-${i}`).value;
-        const volume = parseFloat(document.getElementById(`volume-${i}`).value);
-        const multiplier = creditMultipliers[method];
-        const credits = Math.round(multiplier * volume);
-        totalCredits += credits;
-
-        breakdownHTML += `
-          <p><strong>${name}</strong><br/>
-          Method: ${method}<br/>
-          Volume: ${volume}M rows<br/>
-          Estimated Credits: ${credits}</p>
-        `;
-      }
-
-      document.getElementById("sourceBreakdown").innerHTML = breakdownHTML;
-      document.getElementById("totalCredits").textContent = totalCredits;
-      document.getElementById("totalCost").textContent = (totalCredits * rate).toFixed(2);
-      document.getElementById("advancedResults").style.display = "block";
-    }
-
-    // Initial load state
-    generateSources(1);
-  </script>
-</body>
-</html>
+    const connectorIngestionMap = {
+      "Salesforce CRM": ["Batch"],
+      "Salesforce 
