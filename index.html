@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Data Cloud TCO Calculator</title>
+  <title>Salesforce Data Cloud TCO Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
+      max-width: 900px;
+      margin: auto;
       padding: 20px;
     }
     h1, h2 {
@@ -15,35 +16,36 @@
       color: #0176D3;
     }
     .toggle {
-      display: flex;
-      justify-content: center;
+      text-align: center;
       margin-bottom: 20px;
     }
     .toggle button {
-      margin: 0 5px;
+      margin: 0 10px;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
     }
     .section { display: none; }
+    .visible { display: block; }
     label {
       margin-top: 10px;
       display: block;
     }
     input, select {
       width: 100%;
-      padding: 8px;
-      margin: 5px 0 15px;
+      padding: 6px;
+      margin-bottom: 10px;
     }
-    .source {
+    .source-block {
       border: 1px solid #ccc;
-      padding: 15px;
-      margin-bottom: 15px;
+      padding: 12px;
       border-radius: 5px;
+      margin-bottom: 10px;
+      background-color: #f9f9f9;
     }
     .results {
       margin-top: 20px;
-      background-color: #f2f2f2;
+      background: #f1f1f1;
       padding: 15px;
       border-radius: 5px;
     }
@@ -53,105 +55,192 @@
   <h1>Salesforce Data Cloud TCO Calculator</h1>
 
   <div class="toggle">
-    <button onclick="showMode('simple')">Simple</button>
-    <button onclick="showMode('advanced')">Advanced</button>
+    <button onclick="toggleMode('simple')">Simple Mode</button>
+    <button onclick="toggleMode('advanced')">Advanced Mode</button>
   </div>
 
-  <!-- SIMPLE MODE -->
-  <div id="simple" class="section">
+  <!-- Simple Mode -->
+  <div id="simple" class="section visible">
     <h2>Simple Mode</h2>
-    <!-- Reuse the simple calculator UI here -->
-    <p>This is your existing simple calculator section.</p>
+
+    <label>Monthly Data Volume:</label>
+    <select id="simpleVolume">
+      <option value="250">Fewer than 1M records</option>
+      <option value="500">1M–10M records</option>
+      <option value="1000">10M–50M records</option>
+      <option value="2000">More than 50M records</option>
+    </select>
+
+    <label>Refresh Frequency:</label>
+    <select id="simpleRefresh">
+      <option value="1">Monthly</option>
+      <option value="1.5">Weekly</option>
+      <option value="2">Daily</option>
+      <option value="3">Real-time</option>
+    </select>
+
+    <label>Segments or Insights:</label>
+    <select id="simpleSegments">
+      <option value="50">1–5</option>
+      <option value="100">6–15</option>
+      <option value="200">16–30</option>
+      <option value="400">30+</option>
+    </select>
+
+    <label>Activations to External Systems:</label>
+    <select id="simpleActivation">
+      <option value="100">1–2x/month</option>
+      <option value="200">Weekly</option>
+      <option value="400">Daily</option>
+      <option value="0">Not using</option>
+    </select>
+
+    <label>Data Retention Period:</label>
+    <select id="simpleRetention">
+      <option value="100">3 months</option>
+      <option value="200">6 months</option>
+      <option value="300">12 months</option>
+      <option value="400">18+ months</option>
+    </select>
+
+    <label>Credit Rate (USD):</label>
+    <input type="number" id="simpleCreditRate" value="2.50" step="0.01" />
+
+    <button onclick="calculateSimple()">Calculate Simple TCO</button>
+
+    <div id="simpleResults" class="results" style="display:none;">
+      <h3>Simple Mode Estimate</h3>
+      <p><strong>Monthly Credits:</strong> <span id="simpleCredits"></span></p>
+      <p><strong>Monthly Cost:</strong> $<span id="simpleCost"></span></p>
+      <p><strong>Annual Cost:</strong> $<span id="simpleAnnual"></span></p>
+    </div>
   </div>
 
-  <!-- ADVANCED MODE -->
+  <!-- Advanced Mode -->
   <div id="advanced" class="section">
     <h2>Advanced Mode</h2>
-    <div id="sourceList"></div>
-    <button onclick="addSource()">+ Add Data Source</button>
 
-    <label for="creditRate">Credit Rate (USD per credit):</label>
-    <input type="number" id="creditRate" value="2.50" step="0.01" />
+    <label>Number of Data Sources: <span id="sourceCountLabel">1</span></label>
+    <input type="range" min="1" max="50" value="1" id="sourceCount" oninput="generateSources(this.value)" />
 
-    <button onclick="calculateAdvanced()">Calculate TCO</button>
+    <div id="sourceContainer"></div>
 
-    <div class="results" id="advancedResults" style="display:none;">
-      <h3>Estimated Advanced Cost</h3>
-      <div id="breakdown"></div>
-      <p><strong>Total Credits:</strong> <span id="totalCredits"></span></p>
+    <label>Credit Rate (USD):</label>
+    <input type="number" id="advancedCreditRate" value="2.50" step="0.01" />
+
+    <button onclick="calculateAdvanced()">Calculate Advanced TCO</button>
+
+    <div id="advancedResults" class="results" style="display:none;">
+      <h3>Advanced Mode Estimate</h3>
+      <div id="sourceBreakdown"></div>
+      <p><strong>Total Monthly Credits:</strong> <span id="totalCredits"></span></p>
       <p><strong>Total Monthly Cost:</strong> $<span id="totalCost"></span></p>
     </div>
   </div>
 
   <script>
-    const connectors = {
-      "Salesforce CRM (Batch)": 2000,
-      "MuleSoft (Batch)": 2000,
-      "MuleSoft (Streaming)": 5000,
-      "Adobe / Marketo (Batch)": 2000,
-      "Mobile SDK (Real-time Events)": 70000
+    const creditMultipliers = {
+      "Batch": 2000,
+      "Streaming": 5000,
+      "Federation": 70,
+      "Real-time Events": 70000
     };
 
-    function showMode(mode) {
-      document.querySelectorAll('.section').forEach(el => el.style.display = 'none');
-      document.getElementById(mode).style.display = 'block';
+    const connectors = [
+      "Salesforce CRM",
+      "Salesforce Marketing Cloud",
+      "Snowflake",
+      "AWS S3",
+      "MuleSoft",
+      "Google Analytics",
+      "Adobe Experience Platform",
+      "Web/Mobile SDK",
+      "Streaming Platform (Kafka, etc.)"
+    ];
+
+    function toggleMode(mode) {
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('visible'));
+      document.getElementById(mode).classList.add('visible');
     }
 
-    let sourceIndex = 0;
+    function calculateSimple() {
+      const vol = parseInt(document.getElementById("simpleVolume").value);
+      const freq = parseFloat(document.getElementById("simpleRefresh").value);
+      const seg = parseInt(document.getElementById("simpleSegments").value);
+      const act = parseInt(document.getElementById("simpleActivation").value);
+      const ret = parseInt(document.getElementById("simpleRetention").value);
+      const rate = parseFloat(document.getElementById("simpleCreditRate").value);
 
-    function addSource() {
-      const container = document.createElement('div');
-      container.classList.add('source');
-      container.setAttribute('id', `source-${sourceIndex}`);
-      container.innerHTML = `
-        <label>Data Source Name:</label>
-        <input type="text" id="name-${sourceIndex}" placeholder="e.g. Salesforce CRM">
+      const credits = Math.round((vol * freq) + seg + act + (ret / 3));
+      const cost = (credits * rate).toFixed(2);
+      const annual = (credits * rate * 12).toFixed(2);
 
-        <label>Connector Type:</label>
-        <select id="connector-${sourceIndex}">
-          ${Object.keys(connectors).map(c => `<option value="${c}">${c}</option>`).join("")}
-        </select>
+      document.getElementById("simpleCredits").textContent = credits;
+      document.getElementById("simpleCost").textContent = cost;
+      document.getElementById("simpleAnnual").textContent = annual;
+      document.getElementById("simpleResults").style.display = "block";
+    }
 
-        <label>Monthly Volume (in millions of rows):</label>
-        <input type="number" id="volume-${sourceIndex}" value="1" min="0" step="0.01">
-      `;
-      document.getElementById("sourceList").appendChild(container);
-      sourceIndex++;
+    function generateSources(count) {
+      const container = document.getElementById("sourceContainer");
+      const label = document.getElementById("sourceCountLabel");
+      label.textContent = count;
+      container.innerHTML = "";
+
+      for (let i = 0; i < count; i++) {
+        const block = document.createElement("div");
+        block.className = "source-block";
+        block.innerHTML = `
+          <label>Source ${i + 1} Name:</label>
+          <input type="text" id="sourceName-${i}" placeholder="e.g., Salesforce CRM" />
+
+          <label>Connector:</label>
+          <select id="connector-${i}">
+            ${connectors.map(c => `<option value="${c}">${c}</option>`).join("")}
+          </select>
+
+          <label>Ingestion Method:</label>
+          <select id="method-${i}">
+            ${Object.keys(creditMultipliers).map(m => `<option value="${m}">${m}</option>`).join("")}
+          </select>
+
+          <label>Monthly Volume (millions of rows):</label>
+          <input type="number" id="volume-${i}" value="1" min="0" step="0.1" />
+        `;
+        container.appendChild(block);
+      }
     }
 
     function calculateAdvanced() {
+      const count = parseInt(document.getElementById("sourceCount").value);
+      const rate = parseFloat(document.getElementById("advancedCreditRate").value);
       let totalCredits = 0;
       let breakdownHTML = "";
-      const creditRate = parseFloat(document.getElementById("creditRate").value);
 
-      for (let i = 0; i < sourceIndex; i++) {
-        const name = document.getElementById(`name-${i}`)?.value || `Source ${i + 1}`;
-        const connector = document.getElementById(`connector-${i}`)?.value;
-        const volume = parseFloat(document.getElementById(`volume-${i}`)?.value || 0);
-        if (!connector || !volume) continue;
-
-        const multiplier = connectors[connector];
+      for (let i = 0; i < count; i++) {
+        const name = document.getElementById(`sourceName-${i}`).value || `Source ${i + 1}`;
+        const method = document.getElementById(`method-${i}`).value;
+        const volume = parseFloat(document.getElementById(`volume-${i}`).value);
+        const multiplier = creditMultipliers[method];
         const credits = Math.round(multiplier * volume);
         totalCredits += credits;
 
         breakdownHTML += `
           <p><strong>${name}</strong><br/>
-          Connector: ${connector}<br/>
+          Method: ${method}<br/>
           Volume: ${volume}M rows<br/>
           Estimated Credits: ${credits}</p>
         `;
       }
 
-      const totalCost = (totalCredits * creditRate).toFixed(2);
-
-      document.getElementById("breakdown").innerHTML = breakdownHTML;
+      document.getElementById("sourceBreakdown").innerHTML = breakdownHTML;
       document.getElementById("totalCredits").textContent = totalCredits;
-      document.getElementById("totalCost").textContent = totalCost;
+      document.getElementById("totalCost").textContent = (totalCredits * rate).toFixed(2);
       document.getElementById("advancedResults").style.display = "block";
     }
 
-    // Load simple mode by default
-    showMode('simple');
+    // Initial load state
+    generateSources(1);
   </script>
 </body>
 </html>
