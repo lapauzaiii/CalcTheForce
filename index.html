@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Salesforce Data Cloud TCO Calculator</title>
+  <meta charset="UTF-8" />
+  <title>Salesforce Data Cloud TCO Calculator - Simple</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 900px;
+      max-width: 700px;
       margin: auto;
       padding: 20px;
     }
@@ -15,18 +15,6 @@
       text-align: center;
       color: #0176D3;
     }
-    .toggle {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .toggle button {
-      margin: 0 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .section { display: none; }
-    .visible { display: block; }
     label {
       margin-top: 10px;
       display: block;
@@ -34,14 +22,18 @@
     input, select {
       width: 100%;
       padding: 6px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
-    .source-block {
-      border: 1px solid #ccc;
-      padding: 12px;
-      border-radius: 5px;
-      margin-bottom: 10px;
-      background-color: #f9f9f9;
+    button {
+      background-color: #0176D3;
+      color: white;
+      font-size: 16px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
     }
     .results {
       margin-top: 20px;
@@ -49,116 +41,96 @@
       padding: 15px;
       border-radius: 5px;
     }
+    .nav-link {
+      display: block;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .nav-link a {
+      color: #0176D3;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
-  <h1>Salesforce Data Cloud TCO Calculator</h1>
+  <h1>Simple Data Cloud TCO Calculator</h1>
 
-  <div class="toggle">
-    <button onclick="toggleMode('simple')">Simple Mode</button>
-    <button onclick="toggleMode('advanced')">Advanced Mode</button>
+  <label for="simpleVolume">Monthly Data Volume:</label>
+  <select id="simpleVolume">
+    <option value="250">Fewer than 1M records</option>
+    <option value="500">1M–10M records</option>
+    <option value="1000">10M–50M records</option>
+    <option value="2000">More than 50M records</option>
+  </select>
+
+  <label for="simpleRefresh">Refresh Frequency:</label>
+  <select id="simpleRefresh">
+    <option value="1">Monthly</option>
+    <option value="1.5">Weekly</option>
+    <option value="2">Daily</option>
+    <option value="3">Real-time</option>
+  </select>
+
+  <label for="simpleSegments">Segments or Insights:</label>
+  <select id="simpleSegments">
+    <option value="50">1–5</option>
+    <option value="100">6–15</option>
+    <option value="200">16–30</option>
+    <option value="400">30+</option>
+  </select>
+
+  <label for="simpleActivation">Activations to External Systems:</label>
+  <select id="simpleActivation">
+    <option value="100">1–2x/month</option>
+    <option value="200">Weekly</option>
+    <option value="400">Daily</option>
+    <option value="0">Not using</option>
+  </select>
+
+  <label for="simpleRetention">Data Retention Period:</label>
+  <select id="simpleRetention">
+    <option value="100">3 months</option>
+    <option value="200">6 months</option>
+    <option value="300">12 months</option>
+    <option value="400">18+ months</option>
+  </select>
+
+  <label for="simpleCreditRate">Credit Rate (USD):</label>
+  <input type="number" id="simpleCreditRate" value="2.50" step="0.01" />
+
+  <button onclick="calculateSimple()">Calculate TCO</button>
+
+  <div id="simpleResults" class="results" style="display:none;">
+    <h3>Estimated Monthly & Annual Cost</h3>
+    <p><strong>Monthly Credits:</strong> <span id="simpleCredits"></span></p>
+    <p><strong>Monthly Cost:</strong> $<span id="simpleCost"></span></p>
+    <p><strong>Annual Cost:</strong> $<span id="simpleAnnual"></span></p>
   </div>
 
-  <!-- Simple Mode -->
-  <div id="simple" class="section visible">
-    <h2>Simple Mode</h2>
-
-    <label>Monthly Data Volume:</label>
-    <select id="simpleVolume">
-      <option value="250">Fewer than 1M records</option>
-      <option value="500">1M–10M records</option>
-      <option value="1000">10M–50M records</option>
-      <option value="2000">More than 50M records</option>
-    </select>
-
-    <label>Refresh Frequency:</label>
-    <select id="simpleRefresh">
-      <option value="1">Monthly</option>
-      <option value="1.5">Weekly</option>
-      <option value="2">Daily</option>
-      <option value="3">Real-time</option>
-    </select>
-
-    <label>Segments or Insights:</label>
-    <select id="simpleSegments">
-      <option value="50">1–5</option>
-      <option value="100">6–15</option>
-      <option value="200">16–30</option>
-      <option value="400">30+</option>
-    </select>
-
-    <label>Activations to External Systems:</label>
-    <select id="simpleActivation">
-      <option value="100">1–2x/month</option>
-      <option value="200">Weekly</option>
-      <option value="400">Daily</option>
-      <option value="0">Not using</option>
-    </select>
-
-    <label>Data Retention Period:</label>
-    <select id="simpleRetention">
-      <option value="100">3 months</option>
-      <option value="200">6 months</option>
-      <option value="300">12 months</option>
-      <option value="400">18+ months</option>
-    </select>
-
-    <label>Credit Rate (USD):</label>
-    <input type="number" id="simpleCreditRate" value="2.50" step="0.01" />
-
-    <button onclick="calculateSimple()">Calculate Simple TCO</button>
-
-    <div id="simpleResults" class="results" style="display:none;">
-      <h3>Simple Mode Estimate</h3>
-      <p><strong>Monthly Credits:</strong> <span id="simpleCredits"></span></p>
-      <p><strong>Monthly Cost:</strong> $<span id="simpleCost"></span></p>
-      <p><strong>Annual Cost:</strong> $<span id="simpleAnnual"></span></p>
-    </div>
-  </div>
-
-  <!-- Advanced Mode -->
-  <div id="advanced" class="section">
-    <h2>Advanced Mode</h2>
-
-    <label>Number of Data Sources: <span id="sourceCountLabel">1</span></label>
-    <input type="range" min="1" max="50" value="1" id="sourceCount" oninput="generateSources(this.value)" />
-
-    <div id="sourceContainer"></div>
-
-    <label>Credit Rate (USD):</label>
-    <input type="number" id="advancedCreditRate" value="2.50" step="0.01" />
-
-    <button onclick="calculateAdvanced()">Calculate Advanced TCO</button>
-
-    <div id="advancedResults" class="results" style="display:none;">
-      <h3>Advanced Mode Estimate</h3>
-      <div id="sourceBreakdown"></div>
-      <p><strong>Total Monthly Credits:</strong> <span id="totalCredits"></span></p>
-      <p><strong>Total Monthly Cost:</strong> $<span id="totalCost"></span></p>
-    </div>
+  <div class="nav-link">
+    Want to compare multiple sources?  
+    <a href="advanced.html">Try the Advanced Calculator →</a>
   </div>
 
   <script>
-    const creditMultipliers = {
-      "Batch": 2000,
-      "Streaming": 5000,
-      "Federation": 70,
-      "Real-time Events": 70000
-    };
+    function calculateSimple() {
+      const vol = parseInt(document.getElementById("simpleVolume").value);
+      const freq = parseFloat(document.getElementById("simpleRefresh").value);
+      const seg = parseInt(document.getElementById("simpleSegments").value);
+      const act = parseInt(document.getElementById("simpleActivation").value);
+      const ret = parseInt(document.getElementById("simpleRetention").value);
+      const rate = parseFloat(document.getElementById("simpleCreditRate").value);
 
-    const connectors = [
-      "Salesforce CRM",
-      "Salesforce Marketing Cloud",
-      "Snowflake",
-      "AWS S3",
-      "MuleSoft",
-      "Google Analytics",
-      "Adobe Experience Platform",
-      "Web/Mobile SDK",
-      "Streaming Platform (Kafka, etc.)",
-      "Custom / Ingestion API"
-    ];
+      const credits = Math.round((vol * freq) + seg + act + (ret / 3));
+      const cost = (credits * rate).toFixed(2);
+      const annual = (credits * rate * 12).toFixed(2);
 
-    const connectorIngestionMap = {
-      "Salesforce CRM": ["Batch"],
-      "Salesforce 
+      document.getElementById("simpleCredits").textContent = credits;
+      document.getElementById("simpleCost").textContent = cost;
+      document.getElementById("simpleAnnual").textContent = annual;
+      document.getElementById("simpleResults").style.display = "block";
+    }
+  </script>
+</body>
+</html>
