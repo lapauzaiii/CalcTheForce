@@ -30,6 +30,30 @@
       margin-bottom: 10px;
       border-radius: 5px;
       background-color: #f9f9f9;
+      position: relative;
+    }
+    .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      font-size: 14px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button {
+      background-color: #0176D3;
+      color: white;
+      font-size: 16px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
     }
     .results {
       background: #f1f1f1;
@@ -37,112 +61,122 @@
       border-radius: 5px;
       margin-top: 20px;
     }
-    button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      background: #0176D3;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      margin-top: 10px;
-      cursor: pointer;
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .back-link a {
+      color: #0176D3;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
   <h1>Advanced Data Cloud TCO Calculator</h1>
 
-  <label>Number of Data Sources: <span id="sourceCountLabel">1</span></label>
-  <input type="range" id="sourceCount" min="1" max="50" value="1" oninput="generateSources(this.value)" />
-
   <div id="sourceContainer"></div>
 
-  <label>Credit Rate (USD):</label>
-  <input type="number" id="creditRate" value="2.50" step="0.01" />
+  <button onclick="addSource()">+ Add Data Source</button>
 
-  <button onclick="calculateAdvanced()">Calculate</button>
+  <label>Credit Rate (USD):</label>
+  <input type="number" id="creditRate" value="2.50" step="0.01" oninput="calculateAdvanced()" />
 
   <div id="results" class="results" style="display:none;">
-    <h3>Estimated Cost</h3>
-    <div id="breakdown"></div>
+    <h3>Estimated Monthly & Annual Cost</h3>
+    <div id="sourceBreakdown"></div>
     <p><strong>Total Monthly Credits:</strong> <span id="totalCredits"></span></p>
     <p><strong>Total Monthly Cost:</strong> $<span id="totalCost"></span></p>
     <p><strong>Annual Cost:</strong> $<span id="annualCost"></span></p>
   </div>
 
+  <div class="back-link">
+    <a href="index.html">&larr; Back to Simple Calculator</a>
+  </div>
+
   <script src="assets/scripts/data-sources.js"></script>
   <script>
-    function generateSources(count) {
+    let sourceCount = 0;
+
+    function addSource(defaultConnector = "Salesforce CRM") {
       const container = document.getElementById("sourceContainer");
-      document.getElementById("sourceCountLabel").textContent = count;
-      container.innerHTML = "";
+      const block = document.createElement("div");
+      block.className = "source-block";
+      block.setAttribute("id", `source-${sourceCount}`);
 
-      for (let i = 0; i < count; i++) {
-        const block = document.createElement("div");
-        block.className = "source-block";
+      const connectorOptions = Object.keys(connectorIngestionOptions)
+        .map(conn => `<option value="${conn}" ${conn === defaultConnector ? 'selected' : ''}>${conn}</option>`)
+        .join("");
 
-        const connectorOptions = Object.keys(connectorIngestionOptions)
-          .map(conn => `<option value="${conn}">${conn}</option>`)
-          .join("");
+      block.innerHTML = `
+        <button class="remove-btn" onclick="removeSource(${sourceCount})">✕</button>
+        <label>Connector:</label>
+        <select id="connector-${sourceCount}" onchange="updateIngestionOptions(${sourceCount}); calculateAdvanced()">
+          ${connectorOptions}
+        </select>
 
-        block.innerHTML = `
-          <label>Source ${i + 1} - Connector:</label>
-          <select id="connector-${i}" onchange="updateIngestionOptions(${i})">
-            ${connectorOptions}
-          </select>
-          <label>Ingestion Method:</label>
-          <select id="method-${i}"></select>
-          <label>Monthly Volume (in millions of rows):</label>
-          <input type="number" id="volume-${i}" value="1" min="0" step="0.1" />
-        `;
+        <label>Ingestion Method:</label>
+        <select id="method-${sourceCount}" onchange="calculateAdvanced()"></select>
 
-        container.appendChild(block);
-        updateIngestionOptions(i);
-      }
+        <label>Monthly Volume (in millions of rows):</label>
+        <input type="number" id="volume-${sourceCount}" value="1" min="0" step="0.1" oninput="calculateAdvanced()" />
+      `;
+
+      container.appendChild(block);
+      updateIngestionOptions(sourceCount);
+      sourceCount++;
+      calculateAdvanced();
+    }
+
+    function removeSource(index) {
+      const block = document.getElementById(`source-${index}`);
+      block.remove();
+      calculateAdvanced();
     }
 
     function updateIngestionOptions(index) {
-      const conn = document.getElementById(`connector-${index}`).value;
+      const connector = document.getElementById(`connector-${index}`).value;
       const methodDropdown = document.getElementById(`method-${index}`);
-      const methods = connectorIngestionOptions[conn] || ["Batch"];
-
+      const methods = connectorIngestionOptions[connector] || ["Batch"];
       methodDropdown.innerHTML = methods.map(m =>
         `<option value="${m}">${m}</option>`).join("");
       methodDropdown.disabled = methods.length === 1;
     }
 
     function calculateAdvanced() {
-      const count = parseInt(document.getElementById("sourceCount").value);
       const rate = parseFloat(document.getElementById("creditRate").value);
+      const container = document.getElementById("sourceContainer");
+      const blocks = container.querySelectorAll(".source-block");
+
       let totalCredits = 0;
       let breakdownHTML = "";
 
-      for (let i = 0; i < count; i++) {
-        const conn = document.getElementById(`connector-${i}`).value;
-        const method = document.getElementById(`method-${i}`).value;
-        const vol = parseFloat(document.getElementById(`volume-${i}`).value);
+      blocks.forEach((block, i) => {
+        const id = block.id.split("-")[1];
+        const connector = document.getElementById(`connector-${id}`).value;
+        const method = document.getElementById(`method-${id}`).value;
+        const volume = parseFloat(document.getElementById(`volume-${id}`).value) || 0;
         const multiplier = creditMultipliers[method] || 2000;
-        const credits = Math.round(multiplier * vol);
+        const credits = Math.round(multiplier * volume);
         totalCredits += credits;
 
         breakdownHTML += `
-          <p><strong>Source ${i + 1}</strong><br/>
-          Connector: ${conn}<br/>
+          <p><strong>Source ${parseInt(id) + 1}</strong><br/>
+          Connector: ${connector}<br/>
           Method: ${method}<br/>
-          Volume: ${vol}M<br/>
+          Volume: ${volume}M<br/>
           Estimated Credits: ${credits}</p>
         `;
-      }
+      });
 
-      document.getElementById("breakdown").innerHTML = breakdownHTML;
+      document.getElementById("sourceBreakdown").innerHTML = breakdownHTML;
       document.getElementById("totalCredits").textContent = totalCredits;
       document.getElementById("totalCost").textContent = (totalCredits * rate).toFixed(2);
       document.getElementById("annualCost").textContent = (totalCredits * rate * 12).toFixed(2);
-      document.getElementById("results").style.display = "block";
+      document.getElementById("results").style.display = blocks.length > 0 ? "block" : "none";
     }
 
-    generateSources(1);
+    // Load with one default row
+    window.onload = () => addSource();
   </script>
 </body>
 </html>
